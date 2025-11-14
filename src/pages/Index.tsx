@@ -1,3 +1,5 @@
+// src/pages/Index.tsx
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
@@ -14,7 +16,6 @@ import { Database } from "@/lib/supabase-types";
 import { Loader2 } from "lucide-react";
 
 type ProfileRow = Database['public']['Tables']['profiles']['Row'];
-
 type View = 'dashboard' | 'survey' | 'referral' | 'rewards' | 'admin' | 'materials';
 
 const Index = () => {
@@ -23,6 +24,7 @@ const Index = () => {
   const [userName, setUserName] = useState<string | undefined>();
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+
   const { user, signOut, checkIsAdmin } = useAuth();
   const navigate = useNavigate();
 
@@ -36,29 +38,36 @@ const Index = () => {
     if (!user) return;
 
     setLoading(true);
-    
-    // Carregar perfil do usuário
+
+    // 1. Carregar dados do perfil do usuário
     const { data, error } = await supabase
-      .from('profiles')
-      .select('name, points')
-      .eq('id', user.id)
-      .single<Pick<ProfileRow, 'name' | 'points'>>();
+      .from("profiles")
+      .select("name, points")
+      .eq("id", user.id)
+      .single<Pick<ProfileRow, "name" | "points">>();
 
     if (!error && data) {
-      setUserName(data.name ?? user.email?.split('@')[0]);
-      setUserPoints(data.points);
+      setUserName(data.name ?? user.email?.split("@")[0]);
+      setUserPoints(data.points ?? 0);
     }
 
-    // Verificar se é admin
+    // 2. Verificar se o usuário é admin
     const adminStatus = await checkIsAdmin(user.id);
     setIsAdmin(adminStatus);
+
+    // 3. NOVA LÓGICA — Redirecionamento Automático
+    if (adminStatus) {
+      setCurrentView("admin"); // Vai direto para o Admin Dashboard
+    } else {
+      setCurrentView("dashboard"); // Usuário comum → Dashboard normal
+    }
 
     setLoading(false);
   };
 
   const handleSignOut = async () => {
     await signOut();
-    navigate('/auth');
+    navigate("/auth");
   };
 
   const handleNavigate = (view: View) => {
@@ -76,16 +85,17 @@ const Index = () => {
   return (
     <Layout>
       <div className="space-y-6">
+
         <Header
           userName={userName}
           userEmail={user?.email}
           points={userPoints}
           isAuthenticated={!!user}
           onSignOut={handleSignOut}
-          onAdminAccess={isAdmin ? () => handleNavigate('admin') : undefined}
+          onAdminAccess={isAdmin ? () => handleNavigate("admin") : undefined}
         />
 
-        {currentView === 'dashboard' && (
+        {currentView === "dashboard" && (
           <Dashboard
             userName={userName}
             points={userPoints}
@@ -93,31 +103,27 @@ const Index = () => {
           />
         )}
 
-        {currentView === 'survey' && (
-          <SurveyForm onBack={() => handleNavigate('dashboard')} />
+        {currentView === "survey" && (
+          <SurveyForm onBack={() => handleNavigate("dashboard")} />
         )}
 
-        {currentView === 'referral' && (
-          <ReferralForm onBack={() => handleNavigate('dashboard')} />
+        {currentView === "referral" && (
+          <ReferralForm onBack={() => handleNavigate("dashboard")} />
         )}
 
-        {currentView === 'rewards' && (
+        {currentView === "rewards" && (
           <RewardsShop
             userPoints={userPoints}
-            onBack={() => handleNavigate('dashboard')}
+            onBack={() => handleNavigate("dashboard")}
           />
         )}
 
-        {currentView === 'materials' && (
-          <MaterialsPage
-            onBack={() => handleNavigate('dashboard')}
-          />
+        {currentView === "materials" && (
+          <MaterialsPage onBack={() => handleNavigate("dashboard")} />
         )}
 
-        {currentView === 'admin' && isAdmin && (
-          <AdminDashboard
-            onBack={() => handleNavigate('dashboard')}
-          />
+        {currentView === "admin" && isAdmin && (
+          <AdminDashboard onBack={() => handleNavigate("dashboard")} />
         )}
       </div>
     </Layout>
